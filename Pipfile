@@ -9,6 +9,7 @@ requests = "*"
 beautifulsoup4 = "*"
 lxml = "*"
 playwright = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
 
