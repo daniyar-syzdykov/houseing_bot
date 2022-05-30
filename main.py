@@ -7,7 +7,10 @@ import sqlite3
 def _create_tables_in_db():
     connection = sqlite3.connect('test.db') 
     cursor = connection.cursor()
-    cursor.execute("""CREATE TABLE houses(adress text, price integer)""") 
+   # cursor.execute("""CREATE TABLE houses(adress text, price integer)""") 
+   #cursor.execute("INSERT INTO houses VALUES ('kamzina 2', 23000)")
+    cursor.execute("SELECT * FROM houses WHERE adress='kamzina 2'")
+    print(cursor.fetchone())
     connection.commit()
     connection.close()
 def _save_data_in_tables():
