@@ -1,6 +1,7 @@
 import json
 import random 
 import time
+import datetime as dt
 import requests
 from bs4 import BeautifulSoup
 
@@ -37,7 +38,7 @@ def _get_ad_ids(json_data):
 
 def _get_single_ads_info(ids):
     houses = {}
-    for _id in ids:
+    for _id in ids[0:2]:
         url = f'https://krisha.kz/a/show/{_id}'
         response = _get_data_from_url(url)
         raw_json = _parse_response(response, 'script', {'id': 'jsdata'})
@@ -52,6 +53,7 @@ def _get_single_ads_info(ids):
         ads_info['rooms'] = data['advert']['rooms']
         ads_info['owners_name'] = data['advert']['ownerName']
         ads_info['url'] = url 
+        ads_info['added_date'] = str(dt.datetime.now() + dt.timedelta(hours=6)) 
         houses[_id] = [ads_info]
         time.sleep(random.randint(3, 6))
     return houses
