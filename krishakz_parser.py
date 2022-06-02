@@ -6,20 +6,15 @@ import requests
 from bs4 import BeautifulSoup
 
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:95.0) Gecko/20100101 Firefox/95.0',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
+    'User-Agent': 'PostmanRuntime/7.29.0',
+    'Accept': '*/*',
     'Connection': 'keep-alive',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-User': '?1',
-    'Cache-Control': 'max-age=0',
 }
 
 def _get_data_from_url(url):
+    print(url)
     response = requests.get(url=url, headers=HEADERS)
+    print(response.status_code)
     return response
 
 def _parse_response(response, tag, args):
@@ -36,14 +31,15 @@ def _get_ad_ids(json_data):
     ids = json_data['search']['ids']
     return ids 
 
-def _get_single_ads_info(ids):
+def _get_single_ads_info(ids, _type):
     houses = {}
-    for _id in ids[0:2]:
+    for _id in ids:
         url = f'https://krisha.kz/a/show/{_id}'
         response = _get_data_from_url(url)
         raw_json = _parse_response(response, 'script', {'id': 'jsdata'})
         data = _normalize_json(raw_json.text) 
         ads_info = {}
+        ads_info['type'] = _type
         ads_info['name'] = data['advert']['title']
         ads_info['price'] = data['advert']['price']
         ads_info['photo'] = data['advert']['photos']
@@ -58,19 +54,20 @@ def _get_single_ads_info(ids):
         time.sleep(random.randint(3, 6))
     return houses
 
-def krishakz_scrapper(rooms:int, period:int):
-    url = f'https://krisha.kz/arenda/kvartiry/pavlodar/?das[live.rooms]={rooms}&das[rent.period]={period}'
+def krishakz_scrapper(vid:str, rooms:int, period:int):
+    url = 'https://krisha.kz/arenda/kvartiry/pavlodar/?das[live.rooms]=1&das[rent.period]=2'
+    print(url)
     response = _get_data_from_url(url)
     raw_data = _parse_response(response, 'script', {'id': 'jsdata'})
     normalized_json = _normalize_json(raw_data.text)
     ads_ids = _get_ad_ids(normalized_json)
-    houses = _get_single_ads_info(ads_ids)
+    houses = _get_single_ads_info(ads_ids, vid)
     with open('houses.json', 'w') as f:
         json.dump(houses, f, ensure_ascii=False)
     return houses
 
 def main():
-    krishakz_scrapper(1, 2) 
+    krishakz_scrapper('arenda', 1, 2) 
 
 
 if __name__ == '__main__':
