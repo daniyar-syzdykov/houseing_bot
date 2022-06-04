@@ -33,7 +33,7 @@ def _get_ad_ids(json_data):
 
 def _get_single_ads_info(ids, _type):
     houses = {}
-    for _id in ids[:5]:
+    for _id in ids[:2]:
         url = f'https://krisha.kz/a/show/{_id}'
         response = _get_data_from_url(url)
         raw_json = _parse_response(response, 'script', {'id': 'jsdata'})
@@ -55,8 +55,7 @@ def _get_single_ads_info(ids, _type):
     return houses
 
 def krishakz_scrapper(vid:str, rooms:int, period:int):
-    url = 'https://krisha.kz/arenda/kvartiry/pavlodar/?das[live.rooms]=1&das[rent.period]=2'
-    print(url)
+    url = f'https://krisha.kz/{vid}/kvartiry/pavlodar/?das[live.rooms]={rooms}&das[rent.period]={period}'
     response = _get_data_from_url(url)
     raw_data = _parse_response(response, 'script', {'id': 'jsdata'})
     normalized_json = _normalize_json(raw_data.text)
