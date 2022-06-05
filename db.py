@@ -2,7 +2,7 @@ import psycopg2
 import sys
 import os
 import json
-
+import psycopg2.errorcodes
 conn = psycopg2.connect(
         host='localhost',
         dbname='psql_test',
@@ -18,7 +18,7 @@ def _init_database():
     cur.execute(sql)
     conn.commit()
 
-def write_into_houses(raw_json):
+def _write_into_houses(raw_json):
     table = 'houses'
     for ad_id in raw_json:
         fields = 'ad_id, type, ad_name, price, address_title, country, region,\
@@ -40,10 +40,13 @@ city, street, house_num, rooms, owners_name, url, added_date'
         values.append(raw_json[ad_id][0]['added_date'])
         try:
             _write_into_table(table, f"({fields})", tuple(values))
-        except psycopg2.errors.UniqueViolation as err:
-            print(err)
+        except psycopg2.Error as err:
+            conn.rollback()
+            if err.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
+                print('ERROR: ', err)
+                conn.rollback()
     
-def write_into_photos(raw_json):
+def _write_into_photos(raw_json):
     table_name = 'photos'
     fields = 'ad_id, photo_url'
     for ad_id in raw_json:
@@ -53,7 +56,7 @@ def write_into_photos(raw_json):
             values.append(photo['src'])
             _write_into_table(table_name, f"({fields})", tuple(values))
 
-def write_into_maps(raw_json):
+def _write_into_maps(raw_json):
     table_name = 'map_data'
     fields = 'ad_id, lat, lon, zoom'
     for ad_id in raw_json:
@@ -64,6 +67,12 @@ def write_into_maps(raw_json):
         values.append(raw_json[ad_id][0]['map']['lon'])
         values.append(raw_json[ad_id][0]['map']['zoom'])
         _write_into_table(table_name, f"({fields})", tuple(values))
+
+def read_last_n_from_db(n):
+    return cur.fetchall()[:n]
+
+def read_last_data_from_database():
+    return cur.fetchone()
 
 def read_from_db():
     cur.execute("""
@@ -76,6 +85,18 @@ def _write_into_table(table, fields, values):
     print(f"INSERT INTO {table.lower()} {fields} VALUES {values}")
     cur.execute(f"INSERT INTO  {table.lower()} {fields} VALUES {values}")
     conn.commit()
+
+def insert_into_database(raw_json):
+    try:
+        _write_into_houses(raw_json)
+        _write_into_maps(raw_json)
+        _write_into_photos(raw_json)
+    except psycopg2.Error as err:
+        conn.rollback()
+        if err.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
+            print('ERROR: ', err)
+            conn.rollback()
+
 
 _init_database()
 if __name__ == '__main__':

@@ -34,8 +34,3 @@ CREATE TABLE IF NOT EXISTS maps (
   FOREIGN KEY(ad_id) REFERENCES houses (ad_id)
 );
 
-
-CREATE TABLE IF NOT EXISTS sql_test (
-  id SERIAL,
-  zoom INT
-);
