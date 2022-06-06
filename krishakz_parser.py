@@ -33,7 +33,7 @@ def _get_ad_ids(json_data):
 
 def _get_single_ads_info(ids, _type):
     houses = {}
-    for _id in ids[:2]:
+    for _id in ids:
         url = f'https://krisha.kz/a/show/{_id}'
         response = _get_data_from_url(url)
         raw_json = _parse_response(response, 'script', {'id': 'jsdata'})

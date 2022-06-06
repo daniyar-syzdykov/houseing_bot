@@ -1,8 +1,9 @@
-import psycopg2
 import sys
 import os
 import json
+import psycopg2
 import psycopg2.errorcodes
+
 conn = psycopg2.connect(
         host='localhost',
         dbname='psql_test',
@@ -11,8 +12,13 @@ conn = psycopg2.connect(
     )
 cur = conn.cursor()
 
+class SqlQuerys:
+    get_all_ad_ids = "SELECT houses.ad_id FROM houses;"
+    get_all_map_data = "SELECT map_data.ad_id FROM map_data;"
+    get_all_photo_urls ="SELECT photos.photo_url FROM photos;" 
+
 def _init_database():
-    print('initializing database')
+    #print('initializing database')
     with open('createdb.sql', 'r') as f:
         sql = f.read()
     cur.execute(sql)
@@ -20,6 +26,8 @@ def _init_database():
 
 def _write_into_houses(raw_json):
     table_name = 'houses'
+    cur.execute(SqlQuerys.get_all_ad_ids)
+    db_ad_ids = cur.fetchall()
     for ad_id in raw_json:
         fields = 'ad_id, type, ad_name, price, address_title, country, region,\
 city, street, house_num, rooms, owners_name, url, added_date' 
@@ -82,14 +90,14 @@ def _write_into_table(table, fields, values):
 
 def insert_into_database(raw_json):
     try:
-        print("insert_into_db")
         _write_into_houses(raw_json)
         _write_into_maps(raw_json)
         _write_into_photos(raw_json)
-    except Exception as err:
+    except psycopg2.Error as err:
         conn.rollback()
         print('!ERROR: ', err)
-        conn.rollback()
+        if err.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
+            conn.rollback()
 
 _init_database()
 if __name__ == '__main__':

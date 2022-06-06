@@ -1,9 +1,8 @@
 import requests
+import logging
+from aiogram import Bot, Dispatcher, executor, types
 
+API_TOKEN = '5509187287:AAE8EXqIEGsXCCzBJ-8GbnHeS49UGMRKVUQ'
+URL = f'https://api.telegram.org/bot{API_TOKEN}/getMe'
 
-#TOKEN = '5509187287:AAE8EXqIEGsXCCzBJ-8GbnHeS49UGMRKVUQ'
-#URL = f'https://api.telegram.org/bot{TOKEN}/getMe'
-#
-#response = requests.get(url=URL)
-#print(response.status_code)
-
+logging.BasicConf(level=logging.INFO)

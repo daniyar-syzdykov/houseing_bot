@@ -1,0 +1,7 @@
+save_to_database
+[(674538239,), (671687167,), (675396704,), (676474462,), (676473290,), (676109553,), (676472579,), (676360996,), (676472454,), (667843858,), (673995011,), (666336702,), (676316515,), (672625077,), (676307111,), (672498959,), (676286018,), (672564217,), (675532338,), (676464226,)]
+(674538239,)
+INSERT INTO houses (ad_id, type, ad_name, price, address_title, country, region,city, street, house_num, rooms, owners_name, url, added_date) VALUES ('674538239', 'arenda', '1-комнатная квартира, 33 м², 1/5 этаж на длительный срок', 75000, 'Кривенко 87', 'Kazahstan', 'Pavlodarskaya_obl_', 'Pavlodar', 'Krivenko', '87', 1, 'id23748449', 'https://krisha.kz/a/show/674538239', '2022-06-07 05:24:54.607628')
+!ERROR:  duplicate key value violates unique constraint "houses_pkey"
+DETAIL:  Key (ad_id)=(674538239) already exists.
+

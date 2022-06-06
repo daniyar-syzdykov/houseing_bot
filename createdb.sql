@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS photos(
     id SERIAL,
     PRIMARY KEY(id),
     ad_id INT NOT NULL,
-    photo_url TEXT,
+    photo_url TEXT UNIQUE,
     FOREIGN KEY(ad_id) REFERENCES houses(ad_id)
 );
 
