@@ -19,7 +19,7 @@ def _init_database():
     conn.commit()
 
 def _write_into_houses(raw_json):
-    table = 'houses'
+    table_name = 'houses'
     for ad_id in raw_json:
         fields = 'ad_id, type, ad_name, price, address_title, country, region,\
 city, street, house_num, rooms, owners_name, url, added_date' 
@@ -38,13 +38,7 @@ city, street, house_num, rooms, owners_name, url, added_date'
         values.append(raw_json[ad_id][0]['owners_name'])
         values.append(raw_json[ad_id][0]['url'])
         values.append(raw_json[ad_id][0]['added_date'])
-        try:
-            _write_into_table(table, f"({fields})", tuple(values))
-        except psycopg2.Error as err:
-            conn.rollback()
-            if err.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
-                print('ERROR: ', err)
-                conn.rollback()
+        _write_into_table(table_name, f"({fields})", tuple(values))
     
 def _write_into_photos(raw_json):
     table_name = 'photos'
@@ -88,16 +82,15 @@ def _write_into_table(table, fields, values):
 
 def insert_into_database(raw_json):
     try:
+        print("insert_into_db")
         _write_into_houses(raw_json)
         _write_into_maps(raw_json)
         _write_into_photos(raw_json)
-    except psycopg2.Error as err:
+    except Exception as err:
         conn.rollback()
-        if err.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
-            print('ERROR: ', err)
-            conn.rollback()
-
+        print('!ERROR: ', err)
+        conn.rollback()
 
 _init_database()
 if __name__ == '__main__':
-    _init_database()
+    pass

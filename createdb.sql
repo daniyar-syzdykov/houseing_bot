@@ -2,16 +2,17 @@ CREATE TABLE IF NOT EXISTS houses (
     id SERIAL,
     ad_id INT NOT NULL,
     PRIMARY KEY(ad_id),
-    ad_name VARCHAR,
+    type VARCHAR(255),
+    ad_name VARCHAR(255),
     price INT,
-    adress_title VARCHAR,
-    country VARCHAR,
-    region VARCHAR,
-    city VARCHAR,
-    street VARCHAR,
-    house_num VARCHAR,
+    address_title VARCHAR(255),
+    country VARCHAR(255),
+    region VARCHAR(255),
+    city VARCHAR(255),
+    street VARCHAR(255),
+    house_num VARCHAR(255),
     rooms INT,
-    owners_name VARCHAR,
+    owners_name VARCHAR(255),
     url TEXT,
     added_date TIMESTAMP
 );
@@ -24,7 +25,7 @@ CREATE TABLE IF NOT EXISTS photos(
     FOREIGN KEY(ad_id) REFERENCES houses(ad_id)
 );
 
-CREATE TABLE IF NOT EXISTS maps (
+CREATE TABLE IF NOT EXISTS map_data (
   id SERIAL,
   PRIMARY KEY(id),
   ad_id INT,

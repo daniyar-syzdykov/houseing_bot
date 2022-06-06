@@ -5,6 +5,7 @@ import psycopg2
 from krishakz_parser import krishakz_scrapper
 
 def _save_data_to_database(data):
+    print("save_to_database")
     db.insert_into_database(data)
 
 def _read_from_database():
