@@ -7,6 +7,9 @@ from collections import namedtuple
 from typing import NamedTuple
 from dataclasses import dataclass
 
+#    await message.reply(f'{ad.db_id} {ad.ad_id} {ad.ad_type} {ad.ad_name}\
+#{ad.price} {ad.address_title} {ad.country} {ad.region} {ad.city} {ad.street}\
+#{ad.house_num} {ad.rooms} {ad.owners_name} {ad.url} {ad.added_date} {ad.photo_url}')
 
 class DataFromDB(NamedTuple):
     db_id: int
@@ -24,7 +27,7 @@ class DataFromDB(NamedTuple):
     owners_name: str
     url: str
     added_date: list
-    photo_url: list
+    photo_url: list[str]
 
 
 conn = psycopg2.connect(
@@ -73,6 +76,18 @@ city, street, house_num, rooms, owners_name, url, added_date'
         values.append(raw_json[ad_id][0]['url'])
         values.append(raw_json[ad_id][0]['added_date'])
         _write_into_table(table_name, f"({fields})", tuple(values))
+
+def init_new_user(user_id, username):
+    table_name = 'sent_messages'
+    fields = 'user_id, ad_id, username'
+    values = [user_id, 0, username]
+    _write_into_table(table_name, f"({fields})", tuple(values))
+
+def insert_into_sent_messages(user_id, ad_id, username):
+    table_name = 'sent_messages'
+    fields = 'user_id, ad_id, username'
+    values = [user_id, ad_id, username]
+    _write_into_table(table_name, f"({fields})", tuple(values))
     
 def _write_into_photos(raw_json):
     table_name = 'photos'
@@ -164,6 +179,7 @@ def insert_into_database(raw_json):
         print('!ERROR: ', err)
         if err.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
             conn.rollback()
+
 
 _init_database()
 if __name__ == '__main__':

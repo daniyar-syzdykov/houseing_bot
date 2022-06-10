@@ -9,7 +9,7 @@ def _save_data_to_database(data):
     db.insert_into_database(data)
 
 def _read_from_database():
-    db.read_from_db()
+    db.fetch_all_from_db()
     
 def _retrive_data_from_scrapper(_type, rooms, rent_period):
     data = krishakz_scrapper('arenda', 1, 2) 
