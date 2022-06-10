@@ -1,6 +1,6 @@
 import json
 import random 
-import time
+import asyncio
 import datetime as dt
 import requests
 from bs4 import BeautifulSoup
@@ -31,7 +31,7 @@ def _get_ad_ids(json_data):
     ids = json_data['search']['ids']
     return ids 
 
-def _get_single_ads_info(ids, _type):
+async def _get_single_ads_info(ids, _type):
     houses = {}
     for _id in ids:
         url = f'https://krisha.kz/a/show/{_id}'
@@ -51,7 +51,7 @@ def _get_single_ads_info(ids, _type):
         ads_info['url'] = url 
         ads_info['added_date'] = str(dt.datetime.now() + dt.timedelta(hours=6)) 
         houses[_id] = [ads_info]
-        time.sleep(random.randint(3, 6))
+        await asyncio.sleep(random.randint(3, 6))
     return houses
 
 def krishakz_scrapper(vid:str, rooms:int, period:int):
@@ -65,10 +65,10 @@ def krishakz_scrapper(vid:str, rooms:int, period:int):
         json.dump(houses, f, ensure_ascii=False)
     return houses
 
-def main():
-    krishakz_scrapper('arenda', 1, 2) 
+async def main():
+    await krishakz_scrapper('arenda', 1, 2) 
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
 
