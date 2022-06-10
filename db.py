@@ -100,7 +100,7 @@ def _write_into_maps(raw_json):
         values.append(raw_json[ad_id][0]['map']['zoom'])
         _write_into_table(table_name, f"({fields})", tuple(values))
 
-def _convert_sql_to_named_tuple(data):
+def _convert_sql_to_named_tuple(data: tuple) -> DataFromDB:
     d = data
     return DataFromDB(
         db_id=d[0], ad_id=d[1], ad_type=d[2], ad_name=d[3], price=d[4],\
@@ -115,7 +115,7 @@ def _write_into_table(table, fields, values):
     cur.execute(f"INSERT INTO  {table.lower()} {fields} VALUES {values}")
     conn.commit()
 
-def fetch_all_from_db():
+def fetch_all_from_db() -> list[DataFromDB]:
     cur.execute("""
     SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
     LEFT JOIN photos ON houses.ad_id = photos.ad_id
@@ -126,15 +126,33 @@ def fetch_all_from_db():
         result.append(_convert_sql_to_named_tuple(house))
     return result
 
-def fetch_last_n_from_db(*n):
-    return cur.fetchall()[:n]
+def fetch_last_n_from_db(*n) -> list[DataFromDB]:
+    cur.execute("""
+    SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
+    LEFT JOIN photos ON houses.ad_id = photos.ad_id
+    GROUP BY houses.ad_id ORDER BY houses.added_date DESC;""")
+    data = cur.fetchmany(n)
+    result = []
+    for house in data:
+        result.append(_convert_sql_to_named_tuple(house))
+    return result
 
-def fetch_one_from_db():
-    return cur.fetchone()
+def fetch_one_from_db() -> DataFromDB:
+    cur.execute("""
+    SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
+    LEFT JOIN photos ON houses.ad_id = photos.ad_id
+    GROUP BY houses.ad_id ORDER BY houses.added_date DESC;""")
+    data = cur.fetchone()
+    result = _convert_sql_to_named_tuple(data)
+    return result
 
-def read_from_map_data():
+def read_from_map_data() -> list[DataFromDB]:
     cur.execute("SELECT * FROM map_data;")
-    return cur.fetchone()
+    data = cur.fetchall()
+    result = []
+    for m in data:
+        result.append(_convert_sql_to_named_tuple(m))
+    return result
 
 def insert_into_database(raw_json):
     try:
@@ -149,6 +167,4 @@ def insert_into_database(raw_json):
 
 _init_database()
 if __name__ == '__main__':
-    data = fetch_all_from_db()
-    for i in data:
-        print(i.price)
+    fetch_one_from_db()

@@ -2,7 +2,7 @@ import requests
 import logging
 from aiogram import Bot, Dispatcher, executor, types
 import db
-data
+
 API_TOKEN = '5509187287:AAE8EXqIEGsXCCzBJ-8GbnHeS49UGMRKVUQ'
 URL = f'https://api.telegram.org/bot{API_TOKEN}/getMe'
 
@@ -20,7 +20,7 @@ async def send_welcome(message: types.Message):
 @dp.message_handler(commands=['/new'])
 async def echo(message: types.Message):
     houses = db.read_from_db()
-    await message.reply()
+    await message.reply(houses)
 
 
 if __name__ == '__main__':
