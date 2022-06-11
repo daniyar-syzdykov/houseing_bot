@@ -1,7 +1,10 @@
+import random
 import asyncio
 import logging
 import requests
 from aiogram import Bot, Dispatcher, executor, types
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.dispatcher.filters import Text
 #from aiogram.types.input_media import InputMediaPhoto
 from aiogram.utils.exceptions import *
 
@@ -15,7 +18,8 @@ URL = f'https://api.telegram.org/bot{API_TOKEN}/getMe'
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(API_TOKEN)
-dp = Dispatcher(bot)
+loop = asyncio.get_event_loop()
+dp = Dispatcher(bot, loop=loop)
 
 def user_is_new(user_id: int) -> bool:
     db.cur.execute("SELECT sent_messages.user_id FROM sent_messages")
@@ -26,7 +30,7 @@ def user_is_new(user_id: int) -> bool:
         return False
     return True
 
-def message_sent(user_id, ad_id):
+def message_sent(user_id, ad_id) -> bool:
     db.cur.execute("SELECT user_id, ad_id FROM sent_messages")
     messages = db.cur.fetchall()
     if (user_id, ad_id) in messages:
@@ -35,9 +39,13 @@ def message_sent(user_id, ad_id):
 
 @dp.message_handler(commands=['start', 'help'])
 async def send_welcome(message: types.Message):
-    await message.reply("Hi\nI'am Housing bot\nPowerd by aiogram.")
+    start_buttons = ['Последнее объявление', 'Начать']
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    keyboard.add(*start_buttons)
+    await message.answer("Hi\nI'am Housing bot\nPowerd by aiogram."\
+            , reply_markup=keyboard)
 
-@dp.message_handler(commands=['new'])
+@dp.message_handler(Text(equals='Последнее объявление'))
 async def send_newest_ad(message: types.Message):
     user_id, username = message.from_user.id, message.from_user.username
     ad = db.fetch_one_from_db()
@@ -85,9 +93,12 @@ async def _retrive_data_from_scrapper(_type, rooms, rent_period):
 
 async def update_database():
     print('updating database')
-    houses_data = await _retrive_data_from_scrapper('arenda', 1, 2)
-    _save_data_to_database(houses_data)
-
+    while True:
+        houses_data = await _retrive_data_from_scrapper('arenda', 1, 2)
+        _save_data_to_database(houses_data)
+        await asyncio.sleep(random.randint(40, 60))
+            
 if __name__ == '__main__':
+    #dp.loop.create_task(update_database())
     executor.start_polling(dp, skip_updates=True)
 

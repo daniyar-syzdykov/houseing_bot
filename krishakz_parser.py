@@ -3,7 +3,6 @@ import random
 import asyncio
 import aiohttp
 import datetime as dt
-import requests
 from bs4 import BeautifulSoup
 
 HEADERS = {
@@ -34,7 +33,7 @@ def _get_ad_ids(json_data):
 
 async def _get_single_ads_info(ids, _type, session):
     houses = {}
-    for _id in ids[:2]:
+    for _id in ids:
         url = f'https://krisha.kz/a/show/{_id}'
         response = await _get_data_from_url(url, session)
         raw_json = _parse_response(response, 'script', {'id': 'jsdata'})
@@ -63,8 +62,8 @@ async def krishakz_scrapper(ad_type:str, rooms:int, period:int):
         normalized_json = _normalize_json(raw_data.text)
         ads_ids = _get_ad_ids(normalized_json)
         houses = await _get_single_ads_info(ads_ids, ad_type, session)
-        with open('houses.json', 'w') as f:
-            json.dump(houses, f, ensure_ascii=False)
+        #with open('houses.json', 'w') as f:
+        #    json.dump(houses, f, ensure_ascii=False)
         return houses
 
 async def main():

@@ -187,4 +187,5 @@ def insert_into_database(raw_json):
 
 _init_database()
 if __name__ == '__main__':
-    fetch_one_from_db()
+    #fetch_one_from_db()
+    pass
