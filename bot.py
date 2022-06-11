@@ -79,18 +79,15 @@ async def infinite_notifications(message: types.Message):
 def _save_data_to_database(data):
     db.insert_into_database(data)
 
-def _retrive_data_from_scrapper(_type, rooms, rent_period):
-    data = krishakz_scrapper('arenda', 1, 2) 
+async def _retrive_data_from_scrapper(_type, rooms, rent_period):
+    data = await krishakz_scrapper('arenda', 1, 2) 
     return data
 
 async def update_database():
-    houses_data = asyncio.run(_retrive_data_from_scrapper('arenda', 1, 2))
+    print('updating database')
+    houses_data = await _retrive_data_from_scrapper('arenda', 1, 2)
     _save_data_to_database(houses_data)
 
-
-async def _update_database():
-    pass
-
 if __name__ == '__main__':
-    asyncio.run(update_database())
     executor.start_polling(dp, skip_updates=True)
+

@@ -58,7 +58,7 @@ def _write_into_houses(raw_json):
     fields = 'ad_id, type, ad_name, price, address_title, country, region,\
 city, street, house_num, rooms, owners_name, url, added_date' 
     for ad_id in raw_json:
-        if ad_id in db_ad_ids:
+        if (ad_id, ) in db_ad_ids:
             continue
         values = [] 
         values.append(ad_id)
@@ -92,12 +92,16 @@ def insert_into_sent_messages(user_id, ad_id, username):
 def _write_into_photos(raw_json):
     table_name = 'photos'
     fields = 'ad_id, photo_url'
+    cur.execute(SqlQuerys.get_all_photo_urls)
+    photo_urls = cur.fetchall()
     for ad_id in raw_json:
         for photo in raw_json[ad_id][0]['photo']:
-            values = []
-            values.append(ad_id)
-            values.append(photo['src'])
-            _write_into_table(table_name, f"({fields})", tuple(values))
+            print((photo['src'], ))
+            if (photo['src'], ) not in photo_urls:
+                values = []
+                values.append(ad_id)
+                values.append(photo['src'])
+                _write_into_table(table_name, f"({fields})", tuple(values))
 
 def _write_into_maps(raw_json):
     table_name = 'map_data'
@@ -105,7 +109,7 @@ def _write_into_maps(raw_json):
     cur.execute(SqlQuerys.get_all_ad_ids)
     db_ad_ids = cur.fetchall()
     for ad_id in raw_json:
-        if ad_id in db_ad_ids:
+        if (ad_id, ) in db_ad_ids:
             continue
         values = []
         raw_json[ad_id][0]['map']
