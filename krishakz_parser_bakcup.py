@@ -1,7 +1,6 @@
 import json
 import random 
 import asyncio
-import aiohttp
 import datetime as dt
 import requests
 from bs4 import BeautifulSoup
@@ -12,14 +11,14 @@ HEADERS = {
     'Connection': 'keep-alive',
 }
 
-async def _get_data_from_url(url, session):
+def _get_data_from_url(url):
     print(url)
-    async with session.get(url=url, headers=HEADERS) as response:
-        return response
+    response = requests.get(url=url, headers=HEADERS)
+    print(response.status_code)
+    return response
 
-async def _parse_response(response, tag, args):
-    #print('PARSER RESPONSE TEXT: ', response.text())
-    soup = BeautifulSoup(await response.text(), 'lxml')
+def _parse_response(response, tag, args):
+    soup = BeautifulSoup(response.text, 'lxml')
     raw_data = soup.find(tag, args)
     return raw_data
 
@@ -32,11 +31,11 @@ def _get_ad_ids(json_data):
     ids = json_data['search']['ids']
     return ids 
 
-async def _get_single_ads_info(ids, _type, session):
+async def _get_single_ads_info(ids, _type):
     houses = {}
     for _id in ids:
         url = f'https://krisha.kz/a/show/{_id}'
-        response = await _get_data_from_url(url, session)
+        response = _get_data_from_url(url)
         raw_json = _parse_response(response, 'script', {'id': 'jsdata'})
         data = _normalize_json(raw_json.text) 
         ads_info = {}
@@ -56,21 +55,20 @@ async def _get_single_ads_info(ids, _type, session):
     return houses
 
 async def krishakz_scrapper(ad_type:str, rooms:int, period:int):
-    async with aiohttp.ClientSession() as session:
-        url = f'https://krisha.kz/{ad_type}/kvartiry/pavlodar/?das[live.rooms]={rooms}&das[rent.period]={period}'
-        response = await _get_data_from_url(url, session)
-        raw_data = await _parse_response(response, 'script', {'id': 'jsdata'})
-        normalized_json = _normalize_json(raw_data.text)
-        ads_ids = await _get_ad_ids(normalized_json)
-        houses = await _get_single_ads_info(ads_ids, ad_type, session)
-        with open('houses.json', 'w') as f:
-            json.dump(houses, f, ensure_ascii=False)
-        return houses
+    url = f'https://krisha.kz/{ad_type}/kvartiry/pavlodar/?das[live.rooms]={rooms}&das[rent.period]={period}'
+    response = _get_data_from_url(url)
+    raw_data = _parse_response(response, 'script', {'id': 'jsdata'})
+    normalized_json = _normalize_json(raw_data.text)
+    ads_ids = _get_ad_ids(normalized_json)
+    houses = asyncio.run(_get_single_ads_info(ads_ids, ad_type))
+    with open('houses.json', 'w') as f:
+        json.dump(houses, f, ensure_ascii=False)
+    return houses
 
 async def main():
     await krishakz_scrapper('arenda', 1, 2) 
 
 
 if __name__ == '__main__':
-    asyncio.run(krishakz_scrapper('arenda', 1, 2))
+    asyncio.run(main())
 

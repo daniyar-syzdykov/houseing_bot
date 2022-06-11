@@ -1,12 +1,13 @@
-import time
 import asyncio
 import logging
 import requests
 from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types.input_media import InputMediaPhoto
+#from aiogram.types.input_media import InputMediaPhoto
 from aiogram.utils.exceptions import *
 
 import db
+from krishakz_parser import krishakz_scrapper
+
 
 API_TOKEN = '5509187287:AAE8EXqIEGsXCCzBJ-8GbnHeS49UGMRKVUQ'
 URL = f'https://api.telegram.org/bot{API_TOKEN}/getMe'
@@ -73,9 +74,23 @@ async def infinite_notifications(message: types.Message):
             except BadRequest:
                 await message.answer(f'{ad.ad_name}\nЦена: {ad.price}\nАдрес: {ad.address_title}\nСсылка: {ad.url}')
             await asyncio.sleep(5)
+            db.insert_into_sent_messages(user_id, ad.ad_id, username)
+
+def _save_data_to_database(data):
+    db.insert_into_database(data)
+
+def _retrive_data_from_scrapper(_type, rooms, rent_period):
+    data = krishakz_scrapper('arenda', 1, 2) 
+    return data
 
 async def update_database():
+    houses_data = asyncio.run(_retrive_data_from_scrapper('arenda', 1, 2))
+    _save_data_to_database(houses_data)
+
+
+async def _update_database():
     pass
 
 if __name__ == '__main__':
+    asyncio.run(update_database())
     executor.start_polling(dp, skip_updates=True)
