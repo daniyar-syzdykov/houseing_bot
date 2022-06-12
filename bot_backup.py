@@ -87,16 +87,13 @@ async def send_newest_ad(message: types.Message):
 async def infinite_notifications(message: types.Message):
     user_id, username = message.from_user.id, message.from_user.username
     notifications = False if message.text == 'Стоп' else True
-    if message.text == 'Начать':
-        print('NACHLO')
-        await send_notifications(message, True, user_id, username)
-    elif message.text == 'Стоп':
-        print('KONEC')
-        send_notifications(message, False, user_id, username).close()
-
-async def send_notifications(message: types.Message, send: bool, user_id, username):
     queue = update_queue(user_id)
-    while send:
+    while True:
+        print(f'----> QUEUE LEN: {len(queue)}')
+        print(f'----> NOTIFICATIONS : {notifications}')
+        if notifications is False:
+            print('exiting infinite loop')
+            break
         if not queue:
             queue = update_queue(user_id)
         ad_from_queue = queue.pop()
@@ -105,7 +102,7 @@ async def send_notifications(message: types.Message, send: bool, user_id, userna
     Цена: {ad_from_queue.price}\nАдрес: {ad_from_queue.address_title}')
         except BadRequest:
             await message.answer(f'{ad_from_queue.ad_name}\nЦена: {ad_from_queue.price}\nАдрес: {ad_from_queue.address_title}\nСсылка: {ad_from_queue.url}')
-        await asyncio.sleep(random.randint(3, 6))
+        await asyncio.sleep(5)
         db.insert_into_sent_messages(user_id, ad_from_queue.ad_id, username)
 
 async def _retrive_data_from_scrapper(_type, rooms, rent_period):
