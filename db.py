@@ -44,8 +44,8 @@ class SqlQuerys:
     get_all_map_data = "SELECT map_data.ad_id FROM map_data;"
     get_all_photo_urls ="SELECT photos.photo_url FROM photos;" 
 
-def _init_database():
-    #print('initializing database')
+def init_database():
+    print('initializing database')
     with open('createdb.sql', 'r') as f:
         sql = f.read()
     cur.execute(sql)
@@ -127,8 +127,6 @@ def _convert_sql_to_named_tuple(data: tuple) -> DataFromDB:
         house_num=d[10], rooms=d[11], owners_name=d[12], url=d[13],\
         added_date=d[14], photo_url=d[15])
 
-
-    
 def _write_into_table(table, fields, values):
     print(f"INSERT INTO {table.lower()} {fields} VALUES {values}")
     cur.execute(f"INSERT INTO  {table.lower()} {fields} VALUES {values}")
@@ -145,7 +143,7 @@ def fetch_all_from_db() -> list[DataFromDB]:
         result.append(_convert_sql_to_named_tuple(house))
     return result
 
-def fetch_last_n_from_db(*n) -> list[DataFromDB]:
+def fetch_last_n_from_db(*, n) -> list[DataFromDB]:
     cur.execute("""
     SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
     LEFT JOIN photos ON houses.ad_id = photos.ad_id
@@ -165,12 +163,12 @@ def fetch_one_from_db() -> DataFromDB:
     result = _convert_sql_to_named_tuple(data)
     return result
 
-def read_from_map_data() -> list[DataFromDB]:
+def fetch_from_map_data() -> list[DataFromDB]:
     cur.execute("SELECT * FROM map_data;")
     data = cur.fetchall()
     result = []
-    for m in data:
-        result.append(_convert_sql_to_named_tuple(m))
+    for map_data in data:
+        result.append(_convert_sql_to_named_tuple(map_data))
     return result
 
 def insert_into_database(raw_json):
@@ -185,7 +183,7 @@ def insert_into_database(raw_json):
             conn.rollback()
 
 
-_init_database()
 if __name__ == '__main__':
+    init_database()
     #fetch_one_from_db()
     pass

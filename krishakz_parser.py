@@ -4,6 +4,7 @@ import asyncio
 import aiohttp
 import datetime as dt
 from bs4 import BeautifulSoup
+import db
 
 HEADERS = {
     'User-Agent': 'PostmanRuntime/7.29.0',
@@ -29,6 +30,7 @@ def _normalize_json(raw_text):
 
 def _get_ad_ids(json_data):
     ids = json_data['search']['ids']
+    print(f'IDS: {ids}')
     return ids 
 
 async def _get_single_ads_info(ids, _type, session):
@@ -54,21 +56,36 @@ async def _get_single_ads_info(ids, _type, session):
         await asyncio.sleep(random.randint(3, 6))
     return houses
 
-async def krishakz_scrapper(ad_type:str, rooms:int, period:int):
+async def scrape(ad_type: str, rooms: int, period:int, page: int, db_ad_ids: list) -> dict:
     async with aiohttp.ClientSession() as session:
-        url = f'https://krisha.kz/{ad_type}/kvartiry/pavlodar/?das[live.rooms]={rooms}&das[rent.period]={period}'
+        url = f'https://krisha.kz/{ad_type}/kvartiry/pavlodar/?das[live.rooms]={rooms}&das[rent.period]={period}&page=1&page={page}'
+        queue = []
         response = await _get_data_from_url(url, session)
         raw_data = _parse_response(response, 'script', {'id': 'jsdata'})
         normalized_json = _normalize_json(raw_data.text)
-        ads_ids = _get_ad_ids(normalized_json)
-        houses = await _get_single_ads_info(ads_ids, ad_type, session)
+        ad_ids = _get_ad_ids(normalized_json)
+        for ad_id in ad_ids:
+            if ad_id not in db_ad_ids:
+                queue.append(ad_id)
+        if not queue: print('no new ads')
+        houses = await _get_single_ads_info(queue, ad_type, session)
         #with open('houses.json', 'w') as f:
-        #    json.dump(houses, f, ensure_ascii=False)
+        #    json.dump(houses, f, ensure_ascii=false)
         return houses
 
-async def main():
-    await krishakz_scrapper('arenda', 1, 2) 
-
+async def krishakz_scrapper(ad_type:str, rooms:int, period:int):
+    db_ad_ids = db.fetch_all_from_db()
+    db_ad_ids = [db_ad_ids[i].ad_id for i in range(len(db_ad_ids))]
+    houses = {}
+    if not db_ad_ids:
+        for i in range(5, 0, -1):
+            data = await scrape(ad_type, rooms, period, page=i, db_ad_ids=db_ad_ids)
+            houses.update(data)
+            print(len(houses))
+            await asyncio.sleep(random.randint(40, 60))
+        return houses
+    houses = await scrape(ad_type, rooms, period, 1, db_ad_ids=db_ad_ids)
+    return houses
 
 if __name__ == '__main__':
     asyncio.run(krishakz_scrapper('arenda', 1, 2))
