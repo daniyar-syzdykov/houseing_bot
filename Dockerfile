@@ -1,0 +1,19 @@
+FROM python:3.10.4
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+ENV TELEGRAM_API_KEY="5509187287:AAE8EXqIEGsXCCzBJ-8GbnHeS49UGMRKVUQ"
+
+ENV POSTGRES_USER="postgres"
+ENV POSTGRES_PASSWORD="postgres"
+ENV POSTGRES_DB="housing_bot"
+
+
+WORKDIR /code
+
+COPY Pipfile Pipfile.lock /code/
+
+RUN pip install pipenv && pipenv install --system
+
+COPY . /code/

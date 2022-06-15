@@ -1,10 +1,10 @@
 import random
 import asyncio
 import logging
-from enum import Enum, auto
+import datetime as dt
 
 from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup
 from aiogram.dispatcher.filters import Text
 from aiogram.utils.exceptions import *
 
@@ -82,7 +82,10 @@ async def send_welcome(message: types.Message):
     if user_is_new(user_id):
         #print('initialazing uesr')
         db.init_new_user(user_id, username)
-    await message.answer("Hi\nI'am Housing bot\nPowerd by aiogram."\
+    await message.answer("Привет! Я буду уведомлять тебя о новых обявлениях на сайтах недвижимости\
+\nНачать - получать все новые объявления как только они появляются на сайте\
+\nПоследнее 📢 - получить последнее объявление\
+\nСтоп - отключить уведомления."\
             , reply_markup=keyboard)
 
 @dp.message_handler(Text(equals='Последнее 📢'))
@@ -131,6 +134,6 @@ async def update_database():
             
 if __name__ == '__main__':
     #log.info(message_sent(741311709, 1))
-    dp.loop.create_task(update_database())
+    #dp.loop.create_task(update_database())
     executor.start_polling(dp, skip_updates=True)
 

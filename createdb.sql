@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS sent_messages (
     PRIMARY KEY(id),
     user_id INT,
     ad_id INT,
-    username VARCHAR(255)
+    username VARCHAR(255),
+    joined_date TIMESTAMP
 );
 
