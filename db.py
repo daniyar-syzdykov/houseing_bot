@@ -7,7 +7,6 @@ from typing import NamedTuple
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("DATABASE")
 
-log = logging.getLogger("DATABASE")
 
 class DataFromDB(NamedTuple):
     db_id: int
@@ -125,16 +124,6 @@ def update_queue(user_id: int) -> list:
         queue.append(ad)
     return queue
 
-def message_sent(user_id, ad_id) -> bool:
-    cur.execute(f"SELECT users.user_id, ARRAY_AGG(sent_messages.ad_id) AS ad_ids\
-    FROM users LEFT JOIN sent_messages ON users.user_id = sent_messages.user_id\
-    WHERE users.user_id = {user_id} GROUP BY users.user_id;")
-    messages = cur.fetchall()
-    log.info("SENT MESSAGES", messages)
-    if (user_id, ad_id) in messages:
-        return True
-    return False
-
 def fetch_all_from_db() -> list[DataFromDB]:
     cur.execute("""
     SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
@@ -146,26 +135,33 @@ def fetch_all_from_db() -> list[DataFromDB]:
         result.append(_convert_sql_to_named_tuple(house))
     return result
 
+def message_sent(user_id, ad_id) -> bool:
+    cur.execute(f"SELECT users.user_id, ARRAY_AGG(sent_messages.ad_id) AS ad_ids\
+    FROM users LEFT JOIN sent_messages ON users.user_id = sent_messages.user_id\
+    WHERE users.user_id = {user_id} GROUP BY users.user_id;")
+    messages = cur.fetchall()
+    log.info(f"message_sent DB MESSAGES {messages}")
+    if (user_id, ad_id) in messages:
+        return True
+    return False
+
 def init_new_user(user_id, username):
     log.info("INITIALIZING NEW USER")
     table_name = 'users'
     fields = 'user_id, username, joined_date'
-    values = [user_id, username]
+    joined_date = str(dt.datetime.now() + dt.timedelta(hours=6))
+    values = [user_id, username, joined_date]
     _write_into_table(table_name, f"({fields})", tuple(values))
 
 def user_is_new(user_id: int) -> bool:
     cur.execute("SELECT users.user_id FROM users")
     users = cur.fetchall()
+    print(users)
     if users is None:
-        return False
+        return True
     elif user_id not in users:
-        return False
-    return True
-
-#cur.execute("""
-#SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
-#LEFT JOIN photos ON houses.ad_id = photos.ad_id
-#GROUP BY houses.ad_id ORDER BY houses.added_date DESC;""")
+        return True
+    return False
 
 def insert_into_sent_messages(user_id, ad_id):
     table_name = 'sent_messages'

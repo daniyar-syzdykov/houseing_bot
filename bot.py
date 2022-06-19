@@ -15,6 +15,7 @@ from krishakz_parser import krishakz_scrapper
 API_TOKEN = '5509187287:AAE8EXqIEGsXCCzBJ-8GbnHeS49UGMRKVUQ'
 URL = f'https://api.telegram.org/bot{API_TOKEN}/getMe'
 
+#logging.basicConfig(level=logging.INFO)
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("BOT")
 
@@ -31,14 +32,16 @@ def _format_message(ad: db.DataFromDB):
     formatted_message = f'{title}\nЦена: {ad.price}\n'
     return formatted_message
 
-
 async def _send_message(message: types.Message, ad):
     user_id = message.from_user.id
-    if db.message_sent(user_id, ad.ad_id):
+    message_sent = db.message_sent(user_id, ad.ad_id)
+    log.info(f"_send_message MESSAGE SEND IS {message_sent})")
+    if message_sent:
         await message.answer('Нет новых объявлений')
         return None
     db.insert_into_sent_messages(user_id, ad.ad_id)
     try:
+        log.info("_send_message ")
         await message.answer_photo(ad.photo_url[0], caption=_format_message(ad), parse_mode=types.ParseMode.HTML)
     except BadRequest:
         await message.answer(f'{ad.ad_name}\nЦена: {ad.price}\nАдрес: {ad.address_title}\nСсылка: {ad.url}')
@@ -50,7 +53,7 @@ async def send_welcome(message: types.Message):
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True) 
     keyboard.add(*start_buttons)
     if db.user_is_new(user_id):
-        #print('initialazing uesr')
+        log.info("INITIALIAZING NEW USER")
         db.init_new_user(user_id, username)
     await message.answer("Привет! Я буду уведомлять тебя о новых обявлениях на сайтах недвижимости\
 \nНачать - получать все новые объявления как только они появляются на сайте\
@@ -65,6 +68,7 @@ async def send_newest_ad(message: types.Message):
 
 async def _send_infinite_notifications(message: types.Message, user_id):
     queue = db.update_queue(user_id)
+    log.info(f"MAIN NOTIFICATION LOOP QUEUE: {len(queue)}")
     while True:
         if not queue:
             queue = db.update_queue(user_id)
@@ -105,6 +109,6 @@ async def update_database():
         await asyncio.sleep(random.randint(40, 60))
             
 if __name__ == '__main__':
-    dp.loop.create_task(update_database())
+    #dp.loop.create_task(update_database())
     executor.start_polling(dp, skip_updates=True)
 
