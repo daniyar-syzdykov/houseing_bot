@@ -1,3 +1,4 @@
+import time 
 import datetime as dt
 import logging
 import psycopg2
@@ -40,7 +41,6 @@ class SqlQuerys:
     get_all_map_data = "SELECT map_data.ad_id FROM map_data;"
     get_all_photo_urls = "SELECT photos.photo_url FROM photos;" 
 
-
 def _write_into_houses(raw_json):
     table_name = 'houses'
     cur.execute(SqlQuerys.get_all_ad_ids)
@@ -67,7 +67,6 @@ city, street, house_num, rooms, owners_name, url, added_date'
         values.append(raw_json[ad_id][0]['added_date'])
         _write_into_table(table_name, f"({fields})", tuple(values))
 
-    
 def _write_into_photos(raw_json):
     table_name = 'photos'
     fields = 'ad_id, photo_url'
@@ -75,7 +74,7 @@ def _write_into_photos(raw_json):
     photo_urls = cur.fetchall()
     for ad_id in raw_json:
         for photo in raw_json[ad_id][0]['photo']:
-            print((photo['src'], ))
+            #print((photo['src'], ))
             if (photo['src'], ) not in photo_urls:
                 values = []
                 values.append(ad_id)
@@ -107,22 +106,67 @@ def _convert_sql_to_named_tuple(data: tuple) -> DataFromDB:
         added_date=d[14], photo_url=d[15])
 
 def _write_into_table(table, fields, values):
-    print(f"INSERT INTO {table.lower()} {fields} VALUES {values}")
+    #print(f"INSERT INTO {table.lower()} {fields} VALUES {values}")
     cur.execute(f"INSERT INTO  {table.lower()} {fields} VALUES {values}")
     conn.commit()
 
 def update_queue(user_id: int) -> list:
     queue = []
+    cur.execute(f"SELECT users.user_id, users.joined_date, ARRAY_AGG(sent_messages.ad_id) AS ad_ids\
+    FROM users LEFT JOIN sent_messages ON users.user_id = sent_messages.user_id\
+    WHERE users.user_id = {user_id} GROUP BY users.user_id;")
+    user_info = cur.fetchone()
+    sent_messages = user_info[2]
+    joined_time = user_info[1]
+    real_time = dt.datetime.now() + dt.timedelta(hours=6)
+    ads = fetch_all_from_db()
+    #print(f'AD LEN: {len(ads)}')
+    for ad in ads:
+        if sent_messages[0] == None:
+            #print(ad.added_date)
+            if int((joined_time - ad.added_date).total_seconds()) < 86400:
+                queue.append(ad)
+        elif ad.ad_id not in sent_messages:
+            queue.append(ad)
+    return queue
+
+def message_sent(user_id, ad_id) -> bool:
     cur.execute(f"SELECT users.user_id, ARRAY_AGG(sent_messages.ad_id) AS ad_ids\
     FROM users LEFT JOIN sent_messages ON users.user_id = sent_messages.user_id\
     WHERE users.user_id = {user_id} GROUP BY users.user_id;")
-    sent_messages = cur.fetchall()
-    ads = fetch_all_from_db()
-    for ad in ads:
-        if (user_id, ad.ad_id) in sent_messages:
-            continue
-        queue.append(ad)
-    return queue
+    messages = cur.fetchone()
+    #log.info(f"message_sent DB MESSAGES {messages}")
+    #print(messages)
+    if ad_id in messages[1]:
+        return True
+    return False
+
+def init_new_user(user_id, username):
+    #print(f'USERNAME IS: {username}')
+    if username is None:
+        username = 'nousername'
+    #log.info("INITIALIZING NEW USER")
+    table_name = 'users'
+    fields = 'user_id, username, joined_date'
+    joined_date = str(dt.datetime.now() + dt.timedelta(hours=6))
+    values = [user_id, username, joined_date]
+    _write_into_table(table_name, f"({fields})", tuple(values))
+
+def user_is_new(user_id: int) -> bool:
+    cur.execute("SELECT users.user_id FROM users")
+    users = cur.fetchall()
+    #print(users)
+    if users is None:
+        return True
+    elif (user_id,) not in users:
+        return True
+    return False
+
+def insert_into_sent_messages(user_id, ad_id):
+    table_name = 'sent_messages'
+    fields = 'user_id, ad_id'
+    values = [user_id, ad_id]
+    _write_into_table(table_name, f"({fields})", tuple(values))
 
 def fetch_all_from_db() -> list[DataFromDB]:
     cur.execute("""
@@ -134,40 +178,6 @@ def fetch_all_from_db() -> list[DataFromDB]:
     for house in data:
         result.append(_convert_sql_to_named_tuple(house))
     return result
-
-def message_sent(user_id, ad_id) -> bool:
-    cur.execute(f"SELECT users.user_id, ARRAY_AGG(sent_messages.ad_id) AS ad_ids\
-    FROM users LEFT JOIN sent_messages ON users.user_id = sent_messages.user_id\
-    WHERE users.user_id = {user_id} GROUP BY users.user_id;")
-    messages = cur.fetchall()
-    log.info(f"message_sent DB MESSAGES {messages}")
-    if (user_id, ad_id) in messages:
-        return True
-    return False
-
-def init_new_user(user_id, username):
-    log.info("INITIALIZING NEW USER")
-    table_name = 'users'
-    fields = 'user_id, username, joined_date'
-    joined_date = str(dt.datetime.now() + dt.timedelta(hours=6))
-    values = [user_id, username, joined_date]
-    _write_into_table(table_name, f"({fields})", tuple(values))
-
-def user_is_new(user_id: int) -> bool:
-    cur.execute("SELECT users.user_id FROM users")
-    users = cur.fetchall()
-    print(users)
-    if users is None:
-        return True
-    elif user_id not in users:
-        return True
-    return False
-
-def insert_into_sent_messages(user_id, ad_id):
-    table_name = 'sent_messages'
-    fields = 'user_id, ad_id'
-    values = [user_id, ad_id]
-    _write_into_table(table_name, f"({fields})", tuple(values))
 
 def fetch_last_n_from_db(*, n) -> list[DataFromDB]:
     cur.execute("""
@@ -198,7 +208,7 @@ def fetch_from_map_data() -> list[DataFromDB]:
     return result
 
 def init_database():
-    print('initializing database')
+    #print('initializing database')
     with open('createdb.sql', 'r') as f:
         sql = f.read()
     cur.execute(sql)
@@ -211,11 +221,11 @@ def insert_into_database(raw_json):
         _write_into_photos(raw_json)
     except psycopg2.Error as err:
         conn.rollback()
-        print('!ERROR: ', err)
+        #print('!ERROR: ', err)
         if err.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
             conn.rollback()
 
-
 if __name__ == '__main__':
+    update_queue(741311709)
     init_database()
     #fetch_one_from_db()

@@ -51,11 +51,3 @@ create table if not exists sent_messages (
     ad_id INT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS sent_messages (
-    id SERIAL,
-    user_id INT NOT NULL,
-    PRIMARY KEY(user_id),
-    ad_id INT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(user_id)
-);
-
