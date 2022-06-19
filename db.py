@@ -1,15 +1,14 @@
-import sys
-import os
-import json
+import datetime as dt
+import logging
 import psycopg2
 import psycopg2.errorcodes
-from collections import namedtuple
 from typing import NamedTuple
-from dataclasses import dataclass
 
 #    await message.reply(f'{ad.db_id} {ad.ad_id} {ad.ad_type} {ad.ad_name}\
 #{ad.price} {ad.address_title} {ad.country} {ad.region} {ad.city} {ad.street}\
 #{ad.house_num} {ad.rooms} {ad.owners_name} {ad.url} {ad.added_date} {ad.photo_url}')
+
+log = logging.getLogger("DATABASE")
 
 class DataFromDB(NamedTuple):
     db_id: int
@@ -44,12 +43,6 @@ class SqlQuerys:
     get_all_map_data = "SELECT map_data.ad_id FROM map_data;"
     get_all_photo_urls ="SELECT photos.photo_url FROM photos;" 
 
-def init_database():
-    print('initializing database')
-    with open('createdb.sql', 'r') as f:
-        sql = f.read()
-    cur.execute(sql)
-    conn.commit()
 
 def _write_into_houses(raw_json):
     table_name = 'houses'
@@ -77,17 +70,6 @@ city, street, house_num, rooms, owners_name, url, added_date'
         values.append(raw_json[ad_id][0]['added_date'])
         _write_into_table(table_name, f"({fields})", tuple(values))
 
-def init_new_user(user_id, username):
-    table_name = 'sent_messages'
-    fields = 'user_id, ad_id, username'
-    values = [user_id, 0, username]
-    _write_into_table(table_name, f"({fields})", tuple(values))
-
-def insert_into_sent_messages(user_id, ad_id, username):
-    table_name = 'sent_messages'
-    fields = 'user_id, ad_id, username'
-    values = [user_id, ad_id, username]
-    _write_into_table(table_name, f"({fields})", tuple(values))
     
 def _write_into_photos(raw_json):
     table_name = 'photos'
@@ -132,6 +114,52 @@ def _write_into_table(table, fields, values):
     cur.execute(f"INSERT INTO  {table.lower()} {fields} VALUES {values}")
     conn.commit()
 
+def init_new_user(user_id, username):
+    table_name = 'users'
+    fields = 'user_id, username, joined_date'
+    joined_date = str(dt.datetime.now() + dt.timedelta(hours=6))
+    values = [user_id, username, joined_date]
+    _write_into_table(table_name, f"({fields})", tuple(values))
+
+def insert_into_sent_messages(user_id, ad_id):
+    table_name = 'sent_messages'
+    fields = 'user_id, ad_id'
+    values = [user_id, ad_id]
+    _write_into_table(table_name, f"({fields})", tuple(values))
+
+def user_is_new(user_id: int) -> bool:
+    log.info("INITIALIZING NEW USER")
+    cur.execute("SELECT users.user_id FROM users")
+    users = cur.fetchall()
+    if users is None:
+        return False
+    elif user_id not in users:
+        return False
+    return True
+
+def update_queue(user_id: int) -> list:
+    queue = []
+    cur.execute(f"SELECT users.user_id, ARRAY_AGG(sent_messages.ad_id) AS ad_ids\
+    FROM users LEFT JOIN sent_messages ON users.user_id = sent_messages.user_id\
+    WHERE users.user_id = {user_id} GROUP BY users.user_id;")
+    sent_messages = cur.fetchall()
+    ads = fetch_all_from_db()
+    for ad in ads:
+        if (user_id, ad.ad_id) in sent_messages:
+            continue
+        queue.append(ad)
+    return queue
+
+def message_sent(user_id, ad_id) -> bool:
+    cur.execute(f"SELECT users.user_id, ARRAY_AGG(sent_messages.ad_id) AS ad_ids\
+    FROM users LEFT JOIN sent_messages ON users.user_id = sent_messages.user_id\
+    WHERE users.user_id = {user_id} GROUP BY users.user_id;")
+    messages = cur.fetchall()
+    log.info("SENT MESSAGES", messages)
+    if (user_id, ad_id) in messages:
+        return True
+    return False
+
 def fetch_all_from_db() -> list[DataFromDB]:
     cur.execute("""
     SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
@@ -171,6 +199,13 @@ def fetch_from_map_data() -> list[DataFromDB]:
         result.append(_convert_sql_to_named_tuple(map_data))
     return result
 
+def init_database():
+    print('initializing database')
+    with open('createdb.sql', 'r') as f:
+        sql = f.read()
+    cur.execute(sql)
+    conn.commit()
+
 def insert_into_database(raw_json):
     try:
         _write_into_houses(raw_json)
@@ -186,4 +221,3 @@ def insert_into_database(raw_json):
 if __name__ == '__main__':
     init_database()
     #fetch_one_from_db()
-    pass
