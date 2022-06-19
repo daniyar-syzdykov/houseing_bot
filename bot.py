@@ -26,25 +26,6 @@ db.init_database()
 
 USERS_TASKS = dict()
 
-def user_is_new(user_id: int) -> bool:
-    log.info("INITIALIZING NEW USER")
-    db.cur.execute("SELECT sent_messages.user_id FROM sent_messages")
-    users = db.cur.fetchall()
-    if users is None:
-        return False
-    elif user_id not in users:
-        return False
-    return True
-
-def message_sent(user_id, ad_id) -> bool:
-    db.cur.execute(f"SELECT user_id, ad_id FROM sent_messages WHERE user_id = {user_id}")
-    messages = db.cur.fetchall()
-    log.info(messages)
-    if (user_id, ad_id) in messages:
-        return True
-    return False
-
-
 def update_queue(user_id: int) -> list:
     queue = []
     db.cur.execute(f"SELECT user_id, ad_id FROM sent_messages WHERE user_id = {user_id}")
@@ -64,7 +45,7 @@ def _format_message(ad: db.DataFromDB):
 
 async def _send_message(message: types.Message, ad):
     user_id, username = message.from_user.id, message.from_user.username
-    if message_sent(user_id, ad.ad_id):
+    if db.message_sent(user_id, ad.ad_id):
         await message.answer('Нет новых объявлений')
         return None
     db.insert_into_sent_messages(user_id, ad.ad_id, username)
@@ -79,7 +60,7 @@ async def send_welcome(message: types.Message):
     start_buttons = ['Начать', 'Последнее 📢', 'Стоп']
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True) 
     keyboard.add(*start_buttons)
-    if user_is_new(user_id):
+    if db.user_is_new(user_id):
         #print('initialazing uesr')
         db.init_new_user(user_id, username)
     await message.answer("Привет! Я буду уведомлять тебя о новых обявлениях на сайтах недвижимости\
@@ -95,6 +76,7 @@ async def send_newest_ad(message: types.Message):
 
 async def _send_infinite_notifications(message: types.Message, user_id):
     queue = update_queue(user_id)
+    log.info(f"QUEUE IS: {queue}")
     while True:
         if not queue:
             queue = update_queue(user_id)
@@ -105,17 +87,19 @@ async def _send_infinite_notifications(message: types.Message, user_id):
             await asyncio.sleep(5)
 
 def _create_user_tasks(message: types.Message, user_id):
-    my_task = asyncio.create_task(_send_infinite_notifications(message, user_id))
+    # for some reason creating task also runs it thats why this function look wired
+    task = asyncio.create_task(_send_infinite_notifications(message, user_id))
     #print(type(my_task))
-    USERS_TASKS.update({user_id: my_task})
-
+    USERS_TASKS.update({user_id: task})
 
 @dp.message_handler(Text(equals=['Начать', 'Стоп']))
 async def infinite_notifications(message: types.Message):
     user_id = message.from_user.id
     if message.text == 'Начать':
+        log.info("RECIEVED MESSAGE 'Начать'")
         _create_user_tasks(message, user_id)
     elif message.text == 'Стоп': 
+        log.info("RECIEVED MESSAGE 'Стоп'")
         if USERS_TASKS.get(user_id):
             task = USERS_TASKS.pop(user_id)
             task.cancel()
@@ -133,7 +117,6 @@ async def update_database():
         await asyncio.sleep(random.randint(40, 60))
             
 if __name__ == '__main__':
-    #log.info(message_sent(741311709, 1))
     #dp.loop.create_task(update_database())
     executor.start_polling(dp, skip_updates=True)
 

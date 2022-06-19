@@ -35,12 +35,19 @@ CREATE TABLE IF NOT EXISTS map_data (
   FOREIGN KEY(ad_id) REFERENCES houses (ad_id)
 );
 
-CREATE TABLE IF NOT EXISTS sent_messages (
-    id SERIAL,
-    PRIMARY KEY(id),
-    user_id INT,
-    ad_id INT,
+create table if not exists users (
+    id serial,
+    user_id INT NOT NULL,
+    primary key(user_id),
     username VARCHAR(255),
-    joined_date TIMESTAMP
+    joined_date TIMESTAMP NOT NULL
+);
+
+create table if not exists sent_messages (
+    id serial,
+    primary key(id),
+    user_id INT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(user_id),
+    ad_id INT NOT NULL
 );
 
