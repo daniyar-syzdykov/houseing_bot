@@ -1,10 +1,14 @@
 import json
 import random 
+import logging
 import asyncio
 import aiohttp
 import datetime as dt
 from bs4 import BeautifulSoup
 import db
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("KRISHA SCRAPPER")
 
 HEADERS = {
     'User-Agent': 'PostmanRuntime/7.29.0',
@@ -30,7 +34,7 @@ def _normalize_json(raw_text):
 
 def _get_ad_ids(json_data):
     ids = json_data['search']['ids']
-    print(f'IDS: {ids}')
+    log.info(f'_get_ad_ids IDS: {ids}')
     return ids 
 
 async def _get_single_ads_info(ids, _type, session):
@@ -77,13 +81,14 @@ async def krishakz_scrapper(ad_type:str, rooms:int, period:int):
     db_ad_ids = db.fetch_all_from_db()
     db_ad_ids = [db_ad_ids[i].ad_id for i in range(len(db_ad_ids))]
     houses = {}
-    if not db_ad_ids:
-        for i in range(5, 0, -1):
-            data = await scrape(ad_type, rooms, period, page=i, db_ad_ids=db_ad_ids)
-            houses.update(data)
-            print(len(houses))
-            await asyncio.sleep(random.randint(40, 60))
-        return houses
+    #if not db_ad_ids:
+    #    log.info("THERE IS NO ADS IN DB SCRAPPING ALL 5 PAGES")
+    #    for i in range(5, 0, -1):
+    #        data = await scrape(ad_type, rooms, period, page=i, db_ad_ids=db_ad_ids)
+    #        houses.update(data)
+    #        print(len(houses))
+    #        await asyncio.sleep(random.randint(40, 60))
+    #    return houses
     houses = await scrape(ad_type, rooms, period, 1, db_ad_ids=db_ad_ids)
     return houses
 

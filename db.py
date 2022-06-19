@@ -1,10 +1,12 @@
 import datetime as dt
+import logging
 import psycopg2
 import psycopg2.errorcodes
 from typing import NamedTuple
-import logging 
 
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("DATABASE")
+
 log = logging.getLogger("DATABASE")
 
 class DataFromDB(NamedTuple):
@@ -39,12 +41,6 @@ class SqlQuerys:
     get_all_map_data = "SELECT map_data.ad_id FROM map_data;"
     get_all_photo_urls = "SELECT photos.photo_url FROM photos;" 
 
-def init_database():
-    print('initializing database')
-    with open('createdb.sql', 'r') as f:
-        sql = f.read()
-    cur.execute(sql)
-    conn.commit()
 
 def _write_into_houses(raw_json):
     table_name = 'houses'
@@ -72,6 +68,7 @@ city, street, house_num, rooms, owners_name, url, added_date'
         values.append(raw_json[ad_id][0]['added_date'])
         _write_into_table(table_name, f"({fields})", tuple(values))
 
+    
 def _write_into_photos(raw_json):
     table_name = 'photos'
     fields = 'ad_id, photo_url'
@@ -115,6 +112,29 @@ def _write_into_table(table, fields, values):
     cur.execute(f"INSERT INTO  {table.lower()} {fields} VALUES {values}")
     conn.commit()
 
+def update_queue(user_id: int) -> list:
+    queue = []
+    cur.execute(f"SELECT users.user_id, ARRAY_AGG(sent_messages.ad_id) AS ad_ids\
+    FROM users LEFT JOIN sent_messages ON users.user_id = sent_messages.user_id\
+    WHERE users.user_id = {user_id} GROUP BY users.user_id;")
+    sent_messages = cur.fetchall()
+    ads = fetch_all_from_db()
+    for ad in ads:
+        if (user_id, ad.ad_id) in sent_messages:
+            continue
+        queue.append(ad)
+    return queue
+
+def message_sent(user_id, ad_id) -> bool:
+    cur.execute(f"SELECT users.user_id, ARRAY_AGG(sent_messages.ad_id) AS ad_ids\
+    FROM users LEFT JOIN sent_messages ON users.user_id = sent_messages.user_id\
+    WHERE users.user_id = {user_id} GROUP BY users.user_id;")
+    messages = cur.fetchall()
+    log.info("SENT MESSAGES", messages)
+    if (user_id, ad_id) in messages:
+        return True
+    return False
+
 def fetch_all_from_db() -> list[DataFromDB]:
     cur.execute("""
     SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
@@ -146,14 +166,6 @@ def user_is_new(user_id: int) -> bool:
 #SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
 #LEFT JOIN photos ON houses.ad_id = photos.ad_id
 #GROUP BY houses.ad_id ORDER BY houses.added_date DESC;""")
-
-def message_sent(user_id, ad_id) -> bool:
-    cur.execute(f"SELECT users.user_id, ARRAY_AGG(sent_messages.ad_id) as ad_ids FROM users LEFT JOIN sent_messages ON uesrs.user_id = ad_ids.user_id WHERE user_id = {user_id}")
-    messages = cur.fetchall()
-    log.info(messages)
-    if (user_id, ad_id) in messages:
-        return True
-    return False
 
 def insert_into_sent_messages(user_id, ad_id):
     table_name = 'sent_messages'
@@ -189,6 +201,13 @@ def fetch_from_map_data() -> list[DataFromDB]:
         result.append(_convert_sql_to_named_tuple(map_data))
     return result
 
+def init_database():
+    print('initializing database')
+    with open('createdb.sql', 'r') as f:
+        sql = f.read()
+    cur.execute(sql)
+    conn.commit()
+
 def insert_into_database(raw_json):
     try:
         _write_into_houses(raw_json)
@@ -204,4 +223,3 @@ def insert_into_database(raw_json):
 if __name__ == '__main__':
     init_database()
     #fetch_one_from_db()
-    pass

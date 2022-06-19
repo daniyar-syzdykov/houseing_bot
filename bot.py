@@ -26,17 +26,6 @@ db.init_database()
 
 USERS_TASKS = dict()
 
-def update_queue(user_id: int) -> list:
-    queue = []
-    db.cur.execute(f"SELECT user_id, ad_id FROM sent_messages WHERE user_id = {user_id}")
-    sent_messages = db.cur.fetchall()
-    ads = db.fetch_all_from_db()
-    for ad in ads:
-        if (user_id, ad.ad_id) in sent_messages:
-            continue
-        queue.append(ad)
-    return queue
-
 def _format_message(ad: db.DataFromDB):
     title = f'<a href="{ad.url}">{ad.ad_name}</a>'
     formatted_message = f'{title}\nЦена: {ad.price}\n'
@@ -44,11 +33,11 @@ def _format_message(ad: db.DataFromDB):
 
 
 async def _send_message(message: types.Message, ad):
-    user_id, username = message.from_user.id, message.from_user.username
+    user_id = message.from_user.id
     if db.message_sent(user_id, ad.ad_id):
         await message.answer('Нет новых объявлений')
         return None
-    db.insert_into_sent_messages(user_id, ad.ad_id, username)
+    db.insert_into_sent_messages(user_id, ad.ad_id)
     try:
         await message.answer_photo(ad.photo_url[0], caption=_format_message(ad), parse_mode=types.ParseMode.HTML)
     except BadRequest:
@@ -75,11 +64,10 @@ async def send_newest_ad(message: types.Message):
     await _send_message(message, ad)
 
 async def _send_infinite_notifications(message: types.Message, user_id):
-    queue = update_queue(user_id)
-    log.info(f"QUEUE IS: {queue}")
+    queue = db.update_queue(user_id)
     while True:
         if not queue:
-            queue = update_queue(user_id)
+            queue = db.update_queue(user_id)
             await asyncio.sleep(5)
         else:
             ad_from_queue = queue.pop()
@@ -117,6 +105,6 @@ async def update_database():
         await asyncio.sleep(random.randint(40, 60))
             
 if __name__ == '__main__':
-    #dp.loop.create_task(update_database())
+    dp.loop.create_task(update_database())
     executor.start_polling(dp, skip_updates=True)
 
