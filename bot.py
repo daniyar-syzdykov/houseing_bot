@@ -1,12 +1,11 @@
 import random
 import asyncio
 import logging
-import datetime as dt
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ReplyKeyboardMarkup
 from aiogram.dispatcher.filters import Text
-from aiogram.utils.exceptions import *
+from aiogram.utils.exceptions import BadRequest
 
 import db
 from krishakz_parser import krishakz_scrapper
@@ -113,6 +112,6 @@ async def update_database():
         await asyncio.sleep(random.randint(40, 60))
 
 if __name__ == '__main__':
-    #dp.loop.create_task(update_database())
+    dp.loop.create_task(update_database())
     executor.start_polling(dp, skip_updates=True)
 

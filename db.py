@@ -1,4 +1,3 @@
-import time 
 import datetime as dt
 import logging
 import psycopg2
@@ -136,7 +135,8 @@ def message_sent(user_id, ad_id) -> bool:
     WHERE users.user_id = {user_id} GROUP BY users.user_id;")
     messages = cur.fetchone()
     #log.info(f"message_sent DB MESSAGES {messages}")
-    #print(messages)
+    if messages is None:
+        return False
     if ad_id in messages[1]:
         return True
     return False
@@ -155,7 +155,6 @@ def init_new_user(user_id, username):
 def user_is_new(user_id: int) -> bool:
     cur.execute("SELECT users.user_id FROM users")
     users = cur.fetchall()
-    #print(users)
     if users is None:
         return True
     elif (user_id,) not in users:
