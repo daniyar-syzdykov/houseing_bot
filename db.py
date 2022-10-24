@@ -1,8 +1,11 @@
+import os
 import datetime as dt
 import logging
 import psycopg2
 import psycopg2.errorcodes
 from typing import NamedTuple
+# from dotenv import load_dotenv
+# load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("DATABASE")
@@ -28,28 +31,30 @@ class DataFromDB(NamedTuple):
 
 
 conn = psycopg2.connect(
-        host='localhost',
-        dbname='psql_test',
-        user='postgres',
-        password='postgres'
-    )
+    host=os.environ.get('DB_HOST'),
+    dbname=os.environ.get('DB_NAME'),
+    user=os.environ.get('DB_USER'),
+    password=os.environ.get('DB_PASSWORD')
+)
 cur = conn.cursor()
+
 
 class SqlQuerys:
     get_all_ad_ids = "SELECT houses.ad_id FROM houses;"
     get_all_map_data = "SELECT map_data.ad_id FROM map_data;"
-    get_all_photo_urls = "SELECT photos.photo_url FROM photos;" 
+    get_all_photo_urls = "SELECT photos.photo_url FROM photos;"
+
 
 def _write_into_houses(raw_json):
     table_name = 'houses'
     cur.execute(SqlQuerys.get_all_ad_ids)
     db_ad_ids = cur.fetchall()
     fields = 'ad_id, type, ad_name, price, address_title, country, region,\
-city, street, house_num, rooms, owners_name, url, added_date' 
+city, street, house_num, rooms, owners_name, url, added_date'
     for ad_id in raw_json:
         if (ad_id, ) in db_ad_ids:
             continue
-        values = [] 
+        values = []
         values.append(ad_id)
         values.append(raw_json[ad_id][0]['type'])
         values.append(raw_json[ad_id][0]['ad_name'])
@@ -66,6 +71,7 @@ city, street, house_num, rooms, owners_name, url, added_date'
         values.append(raw_json[ad_id][0]['added_date'])
         _write_into_table(table_name, f"({fields})", tuple(values))
 
+
 def _write_into_photos(raw_json):
     table_name = 'photos'
     fields = 'ad_id, photo_url'
@@ -79,6 +85,7 @@ def _write_into_photos(raw_json):
                 values.append(ad_id)
                 values.append(photo['src'])
                 _write_into_table(table_name, f"({fields})", tuple(values))
+
 
 def _write_into_maps(raw_json):
     table_name = 'map_data'
@@ -96,18 +103,21 @@ def _write_into_maps(raw_json):
         values.append(raw_json[ad_id][0]['map']['zoom'])
         _write_into_table(table_name, f"({fields})", tuple(values))
 
+
 def _convert_sql_to_named_tuple(data: tuple) -> DataFromDB:
     d = data
     return DataFromDB(
-        db_id=d[0], ad_id=d[1], ad_type=d[2], ad_name=d[3], price=d[4],\
-        address_title=d[5], country=d[6], region=d[7], city=d[8], street=d[9],\
-        house_num=d[10], rooms=d[11], owners_name=d[12], url=d[13],\
+        db_id=d[0], ad_id=d[1], ad_type=d[2], ad_name=d[3], price=d[4],
+        address_title=d[5], country=d[6], region=d[7], city=d[8], street=d[9],
+        house_num=d[10], rooms=d[11], owners_name=d[12], url=d[13],
         added_date=d[14], photo_url=d[15])
+
 
 def _write_into_table(table, fields, values):
     #print(f"INSERT INTO {table.lower()} {fields} VALUES {values}")
     cur.execute(f"INSERT INTO  {table.lower()} {fields} VALUES {values}")
     conn.commit()
+
 
 def update_queue(user_id: int) -> list:
     queue = []
@@ -122,12 +132,13 @@ def update_queue(user_id: int) -> list:
     #print(f'AD LEN: {len(ads)}')
     for ad in ads:
         if sent_messages[0] == None:
-            #print(ad.added_date)
+            # print(ad.added_date)
             if int((joined_time - ad.added_date).total_seconds()) < 86400:
                 queue.append(ad)
         elif ad.ad_id not in sent_messages:
             queue.append(ad)
     return queue
+
 
 def message_sent(user_id, ad_id) -> bool:
     cur.execute(f"SELECT users.user_id, ARRAY_AGG(sent_messages.ad_id) AS ad_ids\
@@ -141,6 +152,7 @@ def message_sent(user_id, ad_id) -> bool:
         return True
     return False
 
+
 def init_new_user(user_id, username):
     #print(f'USERNAME IS: {username}')
     if username is None:
@@ -152,6 +164,7 @@ def init_new_user(user_id, username):
     values = [user_id, username, joined_date]
     _write_into_table(table_name, f"({fields})", tuple(values))
 
+
 def user_is_new(user_id: int) -> bool:
     cur.execute("SELECT users.user_id FROM users")
     users = cur.fetchall()
@@ -161,11 +174,13 @@ def user_is_new(user_id: int) -> bool:
         return True
     return False
 
+
 def insert_into_sent_messages(user_id, ad_id):
     table_name = 'sent_messages'
     fields = 'user_id, ad_id'
     values = [user_id, ad_id]
     _write_into_table(table_name, f"({fields})", tuple(values))
+
 
 def fetch_all_from_db() -> list[DataFromDB]:
     cur.execute("""
@@ -178,6 +193,7 @@ def fetch_all_from_db() -> list[DataFromDB]:
         result.append(_convert_sql_to_named_tuple(house))
     return result
 
+
 def fetch_last_n_from_db(*, n) -> list[DataFromDB]:
     cur.execute("""
     SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
@@ -189,6 +205,7 @@ def fetch_last_n_from_db(*, n) -> list[DataFromDB]:
         result.append(_convert_sql_to_named_tuple(house))
     return result
 
+
 def fetch_one_from_db() -> DataFromDB:
     cur.execute("""
     SELECT houses.*, ARRAY_AGG(photos.photo_url) as photos FROM houses
@@ -198,6 +215,7 @@ def fetch_one_from_db() -> DataFromDB:
     result = _convert_sql_to_named_tuple(data)
     return result
 
+
 def fetch_from_map_data() -> list[DataFromDB]:
     cur.execute("SELECT * FROM map_data;")
     data = cur.fetchall()
@@ -206,12 +224,14 @@ def fetch_from_map_data() -> list[DataFromDB]:
         result.append(_convert_sql_to_named_tuple(map_data))
     return result
 
+
 def init_database():
     #print('initializing database')
     with open('createdb.sql', 'r') as f:
         sql = f.read()
     cur.execute(sql)
     conn.commit()
+
 
 def insert_into_database(raw_json):
     try:
@@ -223,8 +243,3 @@ def insert_into_database(raw_json):
         #print('!ERROR: ', err)
         if err.pgcode == psycopg2.errorcodes.FOREIGN_KEY_VIOLATION:
             conn.rollback()
-
-if __name__ == '__main__':
-    update_queue(741311709)
-    init_database()
-    #fetch_one_from_db()
